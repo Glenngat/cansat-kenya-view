@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,15 @@ const getLogEntryPreview = (data: any): string => {
 };
 
 export const TelemetryLog: React.FC<TelemetryLogProps> = ({ logs }) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Auto-scroll to bottom when new logs arrive
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [logs]);
+  
   return (
     <Card className="cansat-card h-[400px] flex flex-col">
       <CardHeader className="flex flex-row items-center space-y-0 pb-2 flex-shrink-0">
@@ -35,15 +44,19 @@ export const TelemetryLog: React.FC<TelemetryLogProps> = ({ logs }) => {
         </Badge>
       </CardHeader>
       <CardContent className="flex-1 p-0">
-        <ScrollArea className="h-full px-4 pb-4">
-          <div className="space-y-2">
+        <div className="h-full overflow-hidden">
+          <div 
+            ref={scrollRef}
+            className="h-full overflow-y-auto px-4 pb-4"
+          >
+            <div className="space-y-2">
             {logs.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">
                 <Terminal className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>No telemetry data received yet...</p>
               </div>
             ) : (
-              logs.map((log) => (
+              [...logs].reverse().map((log) => (
                 <div
                   key={log.id}
                   className="group border border-border rounded-lg p-3 hover:bg-muted/50 transition-colors"
@@ -80,8 +93,9 @@ export const TelemetryLog: React.FC<TelemetryLogProps> = ({ logs }) => {
                 </div>
               ))
             )}
+            </div>
           </div>
-        </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
