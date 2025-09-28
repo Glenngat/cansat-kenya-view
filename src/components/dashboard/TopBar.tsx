@@ -1,14 +1,14 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, Satellite, Timer, Wifi, WifiOff } from 'lucide-react';
-import { ConnectionStatus, MissionStatus } from '@/types/telemetry';
+import { Download, Satellite, Timer, Wifi, WifiOff, Settings } from 'lucide-react';
+import { ConnectionStatus } from '@/types/telemetry';
 
 interface TopBarProps {
   connectionStatus: ConnectionStatus;
-  missionStatus: MissionStatus;
-  onExportData: () => void;
   missionDuration: number;
+  onExportData: () => void;
+  onShowMQTTConfig?: () => void;
 }
 
 const formatDuration = (milliseconds: number): string => {
@@ -21,9 +21,9 @@ const formatDuration = (milliseconds: number): string => {
 
 export const TopBar: React.FC<TopBarProps> = ({
   connectionStatus,
-  missionStatus,
-  onExportData,
   missionDuration,
+  onExportData,
+  onShowMQTTConfig
 }) => {
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
@@ -32,9 +32,9 @@ export const TopBar: React.FC<TopBarProps> = ({
           {/* Logo and Title */}
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <Satellite className="h-8 w-8 cansat-green" />
+              <Satellite className="h-8 w-8 text-kenyan-green" />
               <div>
-                <h1 className="text-2xl font-bold cansat-green">CanSat Kenya</h1>
+                <h1 className="text-2xl font-bold text-kenyan-green">CanSat Kenya</h1>
                 <p className="text-sm text-muted-foreground">Base Station Telemetry</p>
               </div>
             </div>
@@ -48,20 +48,12 @@ export const TopBar: React.FC<TopBarProps> = ({
               <span className="font-mono">T+ {formatDuration(missionDuration)}</span>
             </div>
 
-            {/* Mission Phase */}
-            <Badge 
-              variant={missionStatus.phase === 'ascent' ? 'default' : 'secondary'}
-              className="capitalize"
-            >
-              {missionStatus.phase}
-            </Badge>
-
             {/* Connection Status */}
             <div className="flex items-center space-x-2">
               {connectionStatus.connected ? (
                 <>
-                  <Wifi className="h-4 w-4 status-connected" />
-                  <Badge variant="outline" className="status-connected border-current">
+                  <Wifi className="h-4 w-4 text-kenyan-green" />
+                  <Badge variant="outline" className="text-kenyan-green border-kenyan-green">
                     Connected
                   </Badge>
                   {connectionStatus.signalStrength && (
@@ -72,7 +64,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                 </>
               ) : (
                 <>
-                  <WifiOff className="h-4 w-4 status-disconnected" />
+                  <WifiOff className="h-4 w-4 text-kenyan-red" />
                   <Badge variant="destructive">
                     Disconnected
                   </Badge>
@@ -90,6 +82,19 @@ export const TopBar: React.FC<TopBarProps> = ({
               <Download className="h-4 w-4" />
               <span>Export CSV</span>
             </Button>
+
+            {/* MQTT Config Button */}
+            {onShowMQTTConfig && (
+              <Button
+                onClick={onShowMQTTConfig}
+                variant="outline"
+                size="sm"
+                className="flex items-center space-x-2"
+              >
+                <Settings className="h-4 w-4" />
+                <span>MQTT</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>

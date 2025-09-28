@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useTelemetry } from '@/hooks/useTelemetry';
 import { TopBar } from './dashboard/TopBar';
 import { TelemetryCards } from './dashboard/TelemetryCards';
-import OrientationWindow3D from './dashboard/OrientationWindow3D';
+import { OrientationWindow } from './dashboard/OrientationWindow';
 import { TelemetryLog } from './dashboard/TelemetryLog';
+import { MQTTConfig } from './MQTTConfig';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +32,19 @@ import { Link } from 'react-router-dom';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const CanSatDashboard: React.FC = () => {
-  const telemetryData = useTelemetry();
+  const [showMQTTConfig, setShowMQTTConfig] = useState(false);
+  const [mqttConfig, setMQTTConfig] = useState({
+    brokerUrl: 'ws://localhost:8083/mqtt',
+    topics: ['cansat/telemetry', 'cansat/sensors'],
+    useMockData: true,
+  });
+
+  const telemetryData = useTelemetry(mqttConfig);
+
+  const handleMQTTConfigChange = (newConfig: typeof mqttConfig) => {
+    setMQTTConfig(newConfig);
+    setShowMQTTConfig(false);
+  };
   const [selectedMission, setSelectedMission] = useState<string | null>(null);
   const [selectedDataTypes, setSelectedDataTypes] = useState<string[]>(['orientation', 'velocity']);
   const [selectedTests, setSelectedTests] = useState<string[]>([]);
@@ -131,12 +144,12 @@ const CanSatDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground dark">
-      <TopBar
-        connectionStatus={telemetryData.connectionStatus}
-        missionStatus={telemetryData.missionStatus}
-        onExportData={telemetryData.exportData}
-        missionDuration={telemetryData.getMissionDuration()}
-      />
+          <TopBar 
+            connectionStatus={telemetryData.connectionStatus}
+            missionDuration={telemetryData.getMissionDuration()}
+            onExportData={telemetryData.exportData}
+            onShowMQTTConfig={() => setShowMQTTConfig(true)}
+          />
       
       <div className="container mx-auto px-4 py-6">
         {/* Mission Selection Header */}
@@ -353,10 +366,7 @@ const CanSatDashboard: React.FC = () => {
           {/* Main Content Area */}
           <div className="lg:col-span-2 space-y-6 overflow-hidden">
             {/* Telemetry Cards */}
-            <TelemetryCards 
-              currentData={telemetryData.currentData}
-              connectionStatus={telemetryData.connectionStatus}
-            />
+            <TelemetryCards currentData={telemetryData.currentData} />
             
             {/* Default Charts: Orientation & Velocity */}
             <Card className="h-[600px]">
@@ -455,7 +465,7 @@ const CanSatDashboard: React.FC = () => {
           <div className="space-y-6 h-full overflow-hidden flex flex-col">
             {/* 3D Orientation Window */}
             <div className="flex-shrink-0">
-              <OrientationWindow3D 
+              <OrientationWindow
                 orientation={telemetryData.currentData?.mpu6050}
                 connectionStatus={telemetryData.connectionStatus}
               />

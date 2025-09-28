@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TelemetryData, ConnectionStatus, TelemetryLog, MissionStatus } from '@/types/telemetry';
+import { useMQTT } from './useMQTT';
 
 // Mock data generator for demonstration
 const generateMockTelemetry = (): TelemetryData => {
@@ -26,21 +27,49 @@ const generateMockTelemetry = (): TelemetryData => {
   };
 };
 
-export const useTelemetry = () => {
+// Arduino data parser - converts Arduino JSON to TelemetryData format
+const parseArduinoData = (arduinoData: any): TelemetryData => {
+  return {
+    timestamp: Date.now(),
+    bmp280: {
+      pressure: arduinoData.pressure || 0,
+      altitude_m: arduinoData.altitude || 0,
+      altitude_ft: (arduinoData.altitude || 0) * 3.28084,
+      velocity: arduinoData.velocity || 0,
+    },
+    dht22: {
+      temperature: arduinoData.temperature || 0,
+      humidity: arduinoData.humidity || 0,
+    },
+    mpu6050: {
+      pitch: arduinoData.orientation?.pitch || 0,
+      roll: arduinoData.orientation?.roll || 0,
+      yaw: arduinoData.orientation?.yaw || 0,
+    },
+  };
+};
+
+export const useTelemetry = (mqttConfig?: {
+  brokerUrl: string;
+  topics: string[];
+  useMockData?: boolean;
+}) => {
   const [currentData, setCurrentData] = useState<TelemetryData | null>(null);
   const [historicalData, setHistoricalData] = useState<TelemetryData[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
-    connected: true,
+    connected: false,
     lastUpdate: Date.now(),
-    signalStrength: 85,
+    signalStrength: 0,
   });
   const [logs, setLogs] = useState<TelemetryLog[]>([]);
   const [missionStatus, setMissionStatus] = useState<MissionStatus>({
-    launched: true,
-    launchTime: Date.now() - 300000, // 5 minutes ago
+    launched: false,
     currentTime: Date.now(),
-    phase: 'ascent',
+    phase: 'pre-launch',
   });
+
+  // MQTT hook for real data
+  const mqtt = useMQTT();
 
   const addTelemetryData = useCallback((data: TelemetryData) => {
     setCurrentData(data);
@@ -72,15 +101,68 @@ export const useTelemetry = () => {
     }));
   }, []);
 
-  // Simulate real-time data updates
+  // Initialize MQTT connection if config provided
   useEffect(() => {
-    const interval = setInterval(() => {
-      const mockData = generateMockTelemetry();
-      addTelemetryData(mockData);
-    }, 1000); // Update every second
+    if (mqttConfig && !mqttConfig.useMockData) {
+      mqtt.connect(mqttConfig);
+      
+      // Update connection status based on MQTT connection
+      setConnectionStatus(prev => ({
+        ...prev,
+        connected: mqtt.isConnected,
+        signalStrength: mqtt.isConnected ? 85 : 0,
+      }));
+    }
+  }, [mqttConfig, mqtt]);
 
-    return () => clearInterval(interval);
-  }, [addTelemetryData]);
+  // Handle incoming MQTT messages
+  useEffect(() => {
+    if (mqtt.lastMessage && !mqttConfig?.useMockData) {
+      try {
+        const telemetryData = parseArduinoData(mqtt.lastMessage.data);
+        addTelemetryData(telemetryData);
+      } catch (error) {
+        console.error('Error parsing MQTT data:', error);
+      }
+    }
+  }, [mqtt.lastMessage, addTelemetryData, mqttConfig]);
+
+  // Update connection status based on MQTT state
+  useEffect(() => {
+    if (mqttConfig && !mqttConfig.useMockData) {
+      setConnectionStatus(prev => ({
+        ...prev,
+        connected: mqtt.isConnected,
+        signalStrength: mqtt.isConnected ? 85 : 0,
+      }));
+    }
+  }, [mqtt.isConnected, mqttConfig]);
+
+  // Fallback to mock data if no MQTT config or useMockData is true
+  useEffect(() => {
+    if (!mqttConfig || mqttConfig.useMockData) {
+      const interval = setInterval(() => {
+        const mockData = generateMockTelemetry();
+        addTelemetryData(mockData);
+      }, 1000);
+
+      // Set initial mission status for mock data
+      setMissionStatus(prev => ({
+        ...prev,
+        launched: true,
+        launchTime: Date.now() - 300000, // 5 minutes ago
+        phase: 'ascent',
+      }));
+
+      setConnectionStatus(prev => ({
+        ...prev,
+        connected: true,
+        signalStrength: 85,
+      }));
+
+      return () => clearInterval(interval);
+    }
+  }, [addTelemetryData, mqttConfig]);
 
   // Update mission timer
   useEffect(() => {
@@ -149,5 +231,10 @@ export const useTelemetry = () => {
     missionStatus,
     exportData,
     getMissionDuration,
+    // MQTT controls
+    mqttConnect: mqtt.connect,
+    mqttDisconnect: mqtt.disconnect,
+    mqttError: mqtt.error,
+    isConnectedToMQTT: mqtt.isConnected,
   };
 };
