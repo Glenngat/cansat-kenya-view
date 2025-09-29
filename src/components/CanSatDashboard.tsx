@@ -105,8 +105,8 @@ const CanSatDashboard: React.FC = () => {
 
   const startMission = (missionId: string) => {
     console.log(`Starting ${missionId} with data types:`, selectedDataTypes, 'and tests:', selectedTests);
-    // Navigate to mission page with selected parameters
-    window.location.href = `/${missionId}?data=${selectedDataTypes.join(',')}&tests=${selectedTests.join(',')}`;
+    // Mission functionality would be implemented here
+    alert(`Mission ${missionId} configuration saved! Data: ${selectedDataTypes.join(', ')} | Tests: ${selectedTests.join(', ')}`);
   };
 
   const formatTime = (timestamp: number) => {
@@ -478,6 +478,24 @@ const CanSatDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* MQTT Configuration Dialog */}
+      {showMQTTConfig && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-lg p-1 max-w-md w-full">
+            <MQTTConfig
+              onConfigChange={handleMQTTConfigChange}
+              isConnected={telemetryData.isConnectedToMQTT}
+              error={telemetryData.mqttError}
+            />
+            <div className="flex justify-end mt-4 px-6 pb-6">
+              <Button variant="outline" onClick={() => setShowMQTTConfig(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
