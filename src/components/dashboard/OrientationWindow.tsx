@@ -1,9 +1,6 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Text } from '@react-three/drei';
-import { Mesh } from 'three';
 import { ConnectionStatus } from '@/types/telemetry';
 import { RotateCcw, Satellite } from 'lucide-react';
 
@@ -16,84 +13,52 @@ interface OrientationWindowProps {
   connectionStatus: ConnectionStatus;
 }
 
-// CanSat 3D Model Component (Soda Can Shape)
-const CanSatModel: React.FC<{ orientation?: { pitch: number; roll: number; yaw: number } }> = ({ 
+// 2D Orientation Indicator Component (Fallback)
+const OrientationIndicator: React.FC<{ orientation?: { pitch: number; roll: number; yaw: number } }> = ({ 
   orientation 
 }) => {
-  const meshRef = useRef<Mesh>(null);
+  if (!orientation) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        <div className="text-center">
+          <Satellite className="h-12 w-12 mx-auto mb-2 opacity-50" />
+          <p>Waiting for orientation data...</p>
+        </div>
+      </div>
+    );
+  }
 
-  useFrame(() => {
-    if (meshRef.current && orientation) {
-      // Convert degrees to radians and apply rotations
-      const pitch = (orientation.pitch * Math.PI) / 180;
-      const roll = (orientation.roll * Math.PI) / 180;
-      const yaw = (orientation.yaw * Math.PI) / 180;
-      
-      // Apply rotations with smooth interpolation
-      meshRef.current.rotation.x = pitch;
-      meshRef.current.rotation.z = roll;
-      meshRef.current.rotation.y = yaw;
-    }
-  });
-
+  const { pitch, roll, yaw } = orientation;
+  
   return (
-    <group>
-      {/* Main CanSat Body (Cylinder) */}
-      <mesh ref={meshRef} position={[0, 0, 0]}>
-        <cylinderGeometry args={[0.8, 0.8, 2.5, 32]} />
-        <meshStandardMaterial 
-          color="#2f7d32" 
-          roughness={0.3}
-          metalness={0.1}
-        />
-      </mesh>
+    <div className="flex flex-col items-center justify-center h-full space-y-4">
+      {/* Horizon Indicator */}
+      <div className="relative w-32 h-32 rounded-full border-4 border-muted bg-gradient-to-b from-blue-900/20 to-green-900/20">
+        <div 
+          className="absolute inset-2 rounded-full border-2 border-primary bg-primary/10"
+          style={{
+            transform: `rotate(${roll}deg)`
+          }}
+        >
+          <div className="absolute top-1/2 left-1/2 w-1 h-8 bg-primary -translate-x-1/2 -translate-y-1/2" />
+        </div>
+        <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-primary rounded-full -translate-x-1/2 -translate-y-1/2" />
+      </div>
       
-      {/* Top Cap */}
-      <mesh position={[0, 1.3, 0]}>
-        <cylinderGeometry args={[0.82, 0.82, 0.1, 32]} />
-        <meshStandardMaterial 
-          color="#1b5e20" 
-          roughness={0.2}
-          metalness={0.2}
-        />
-      </mesh>
-      
-      {/* Bottom Cap */}
-      <mesh position={[0, -1.3, 0]}>
-        <cylinderGeometry args={[0.82, 0.82, 0.1, 32]} />
-        <meshStandardMaterial 
-          color="#1b5e20" 
-          roughness={0.2}
-          metalness={0.2}
-        />
-      </mesh>
-      
-      {/* Antenna */}
-      <mesh position={[0, 1.6, 0]}>
-        <cylinderGeometry args={[0.02, 0.02, 0.5, 8]} />
-        <meshStandardMaterial color="#424242" />
-      </mesh>
-      
-      {/* Solar Panels */}
-      <mesh position={[0.9, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <boxGeometry args={[0.8, 0.02, 0.6]} />
-        <meshStandardMaterial color="#1a237e" roughness={0.1} metalness={0.8} />
-      </mesh>
-      <mesh position={[-0.9, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <boxGeometry args={[0.8, 0.02, 0.6]} />
-        <meshStandardMaterial color="#1a237e" roughness={0.1} metalness={0.8} />
-      </mesh>
-      
-      {/* Kenya Flag Stripe */}
-      <mesh position={[0, 0.2, 0.81]}>
-        <boxGeometry args={[1.5, 0.3, 0.01]} />
-        <meshStandardMaterial color="#d32f2f" />
-      </mesh>
-      <mesh position={[0, -0.2, 0.81]}>
-        <boxGeometry args={[1.5, 0.3, 0.01]} />
-        <meshStandardMaterial color="#000" />
-      </mesh>
-    </group>
+      {/* Compass */}
+      <div className="relative w-20 h-20 rounded-full border-2 border-muted">
+        <div 
+          className="absolute inset-1 rounded-full"
+          style={{
+            transform: `rotate(${yaw}deg)`
+          }}
+        >
+          <div className="absolute top-0 left-1/2 w-1 h-6 bg-red-500 -translate-x-1/2" />
+          <div className="absolute top-1/2 left-1/2 w-1 h-1 bg-primary rounded-full -translate-x-1/2 -translate-y-1/2" />
+        </div>
+        <div className="absolute top-1 left-1/2 text-xs text-muted-foreground -translate-x-1/2">N</div>
+      </div>
+    </div>
   );
 };
 
@@ -142,44 +107,7 @@ export const OrientationWindow: React.FC<OrientationWindowProps> = ({
       </CardHeader>
       <CardContent className="p-0">
         <div className="h-[280px] bg-gradient-to-b from-slate-900 to-slate-800 rounded-b-lg">
-          <Canvas
-            camera={{ 
-              position: [0, 0, 8], 
-              fov: 50,
-              near: 0.1,
-              far: 1000 
-            }}
-            style={{ width: '100%', height: '100%' }}
-          >
-            {/* Lighting */}
-            <ambientLight intensity={0.4} />
-            <directionalLight 
-              position={[10, 10, 5]} 
-              intensity={1} 
-              castShadow
-              shadow-mapSize-width={2048}
-              shadow-mapSize-height={2048}
-            />
-            <pointLight position={[-10, -10, -10]} intensity={0.3} />
-            
-            {/* 3D CanSat Model */}
-            <CanSatModel orientation={orientation} />
-            
-            {/* Orbit Controls for manual interaction */}
-            <OrbitControls 
-              enablePan={true}
-              enableZoom={true}
-              enableRotate={true}
-              minDistance={3}
-              maxDistance={15}
-            />
-            
-            {/* Background stars effect */}
-            <mesh position={[0, 0, -20]}>
-              <sphereGeometry args={[30, 32, 32]} />
-              <meshBasicMaterial color="#000011" side={2} />
-            </mesh>
-          </Canvas>
+          <OrientationIndicator orientation={orientation} />
         </div>
         
         {/* Orientation Data */}
