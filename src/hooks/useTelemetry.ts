@@ -138,9 +138,9 @@ export const useTelemetry = (mqttConfig?: {
     }
   }, [mqtt.isConnected, mqttConfig]);
 
-  // Fallback to mock data if no MQTT config or useMockData is true
+  // Only use mock data if explicitly requested
   useEffect(() => {
-    if (!mqttConfig || mqttConfig.useMockData) {
+    if (mqttConfig?.useMockData) {
       const interval = setInterval(() => {
         const mockData = generateMockTelemetry();
         addTelemetryData(mockData);
