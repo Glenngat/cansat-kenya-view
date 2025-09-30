@@ -15,6 +15,7 @@ import { TelemetryData } from '@/types/telemetry';
 
 interface TelemetryCardsProps {
   currentData: TelemetryData | null;
+  visibleDataTypes?: string[];
 }
 
 interface TelemetryCardProps {
@@ -76,11 +77,11 @@ const TelemetryCard: React.FC<TelemetryCardProps> = ({
   );
 };
 
-export const TelemetryCards: React.FC<TelemetryCardsProps> = ({ currentData }) => {
+export const TelemetryCards: React.FC<TelemetryCardsProps> = ({ currentData, visibleDataTypes }) => {
   if (!currentData) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {Array.from({ length: 3 }).map((_, i) => (
           <Card key={i} className="cansat-card animate-pulse">
             <CardHeader className="pb-2">
               <div className="h-4 bg-muted rounded w-1/2"></div>
@@ -96,53 +97,95 @@ export const TelemetryCards: React.FC<TelemetryCardsProps> = ({ currentData }) =
 
   const { bmp280, dht22, mpu6050 } = currentData;
 
+  const allCards = [
+    {
+      id: 'altitude',
+      component: (
+        <TelemetryCard
+          title="Altitude"
+          value={bmp280.altitude_m}
+          unit="m"
+          icon={<Mountain className="h-4 w-4" />}
+          color="green"
+          secondaryValue={bmp280.altitude_ft.toFixed(0)}
+          secondaryUnit="ft"
+          trend={bmp280.velocity > 0 ? 'up' : bmp280.velocity < -1 ? 'down' : 'stable'}
+        />
+      )
+    },
+    {
+      id: 'velocity',
+      component: (
+        <TelemetryCard
+          title="Velocity"
+          value={bmp280.velocity}
+          unit="m/s"
+          icon={<Wind className="h-4 w-4" />}
+          color="blue"
+          trend={bmp280.velocity > 10 ? 'up' : bmp280.velocity < -10 ? 'down' : 'stable'}
+        />
+      )
+    },
+    {
+      id: 'temperature',
+      component: (
+        <TelemetryCard
+          title="Temperature"
+          value={dht22.temperature}
+          unit="°C"
+          icon={<Thermometer className="h-4 w-4" />}
+          color="orange"
+          secondaryValue={(dht22.temperature * 9/5 + 32).toFixed(1)}
+          secondaryUnit="°F"
+        />
+      )
+    },
+    {
+      id: 'humidity',
+      component: (
+        <TelemetryCard
+          title="Humidity"
+          value={dht22.humidity}
+          unit="%"
+          icon={<Droplets className="h-4 w-4" />}
+          color="blue"
+        />
+      )
+    },
+    {
+      id: 'pressure',
+      component: (
+        <TelemetryCard
+          title="Pressure"
+          value={bmp280.pressure}
+          unit="hPa"
+          icon={<Gauge className="h-4 w-4" />}
+          color="green"
+        />
+      )
+    }
+  ];
+
+  // Filter cards based on visible data types
+  const visibleCards = visibleDataTypes 
+    ? allCards.filter(card => visibleDataTypes.includes(card.id))
+    : allCards;
+
+  if (visibleCards.length === 0) {
+    return (
+      <Card className="cansat-card">
+        <CardContent className="py-8 text-center text-muted-foreground">
+          No data types selected. Please select data types from the mission configuration above.
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-      <TelemetryCard
-        title="Altitude"
-        value={bmp280.altitude_m}
-        unit="m"
-        icon={<Mountain className="h-4 w-4" />}
-        color="green"
-        secondaryValue={bmp280.altitude_ft.toFixed(0)}
-        secondaryUnit="ft"
-        trend={bmp280.velocity > 0 ? 'up' : bmp280.velocity < -1 ? 'down' : 'stable'}
-      />
-      
-      <TelemetryCard
-        title="Velocity"
-        value={bmp280.velocity}
-        unit="m/s"
-        icon={<Wind className="h-4 w-4" />}
-        color="blue"
-        trend={bmp280.velocity > 10 ? 'up' : bmp280.velocity < -10 ? 'down' : 'stable'}
-      />
-      
-      <TelemetryCard
-        title="Temperature"
-        value={dht22.temperature}
-        unit="°C"
-        icon={<Thermometer className="h-4 w-4" />}
-        color="orange"
-        secondaryValue={(dht22.temperature * 9/5 + 32).toFixed(1)}
-        secondaryUnit="°F"
-      />
-      
-      <TelemetryCard
-        title="Humidity"
-        value={dht22.humidity}
-        unit="%"
-        icon={<Droplets className="h-4 w-4" />}
-        color="blue"
-      />
-      
-      <TelemetryCard
-        title="Pressure"
-        value={bmp280.pressure}
-        unit="hPa"
-        icon={<Gauge className="h-4 w-4" />}
-        color="green"
-      />
+      {visibleCards.map((card, index) => (
+        <div key={card.id}>{card.component}</div>
+      ))}
     </div>
   );
 };
