@@ -40,7 +40,18 @@ const CanSatDashboard: React.FC = () => {
     useMockData: true,
   });
 
-  const telemetryData = useTelemetry(mqttConfig);
+  // Separate telemetry data for each mission
+  const mission1Telemetry = useTelemetry({
+    brokerUrl: mqttConfig.brokerUrl,
+    topics: ['cansat/mission1/telemetry', 'cansat/mission1/sensors'],
+    useMockData: mqttConfig.useMockData,
+  });
+
+  const mission2Telemetry = useTelemetry({
+    brokerUrl: mqttConfig.brokerUrl,
+    topics: ['cansat/mission2/telemetry', 'cansat/mission2/sensors'],
+    useMockData: mqttConfig.useMockData,
+  });
 
   const handleMQTTConfigChange = (newConfig: typeof mqttConfig) => {
     setMQTTConfig(newConfig);
@@ -154,8 +165,11 @@ const CanSatDashboard: React.FC = () => {
     return null;
   };
 
+  // Get active telemetry data based on mission
+  const activeTelemetry = activeMission === 'mission1' ? mission1Telemetry : mission2Telemetry;
+
   // Chart data based on selected data types
-  const chartData = telemetryData.historicalData.map(data => ({
+  const chartData = activeTelemetry.historicalData.map(data => ({
     timestamp: data.timestamp,
     altitude: data.bmp280.altitude_m,
     velocity: data.bmp280.velocity,
@@ -166,10 +180,10 @@ const CanSatDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground dark">
-          <TopBar 
-            connectionStatus={telemetryData.connectionStatus}
-            missionDuration={telemetryData.getMissionDuration()}
-            onExportData={telemetryData.exportData}
+      <TopBar 
+            connectionStatus={activeTelemetry.connectionStatus}
+            missionDuration={activeTelemetry.getMissionDuration()}
+            onExportData={activeTelemetry.exportData}
             onShowMQTTConfig={() => setShowMQTTConfig(true)}
           />
       
@@ -359,7 +373,7 @@ const CanSatDashboard: React.FC = () => {
           <div className="lg:col-span-2 space-y-6 overflow-hidden">
             {/* Telemetry Cards - Filtered */}
             <TelemetryCards 
-              currentData={telemetryData.currentData} 
+              currentData={activeTelemetry.currentData} 
               visibleDataTypes={currentDataTypes}
             />
             
@@ -592,14 +606,14 @@ const CanSatDashboard: React.FC = () => {
             {/* 3D Orientation Window */}
             <div className="flex-shrink-0">
               <OrientationWindow
-                orientation={telemetryData.currentData?.mpu6050}
-                connectionStatus={telemetryData.connectionStatus}
+                orientation={activeTelemetry.currentData?.mpu6050}
+                connectionStatus={activeTelemetry.connectionStatus}
               />
             </div>
             
             {/* Telemetry Log - Takes remaining height */}
             <div className="flex-1 min-h-0">
-              <TelemetryLog logs={telemetryData.logs} />
+              <TelemetryLog logs={activeTelemetry.logs} />
             </div>
           </div>
         </div>
@@ -611,8 +625,8 @@ const CanSatDashboard: React.FC = () => {
           <div className="bg-background rounded-lg p-1 max-w-md w-full">
             <MQTTConfig
               onConfigChange={handleMQTTConfigChange}
-              isConnected={telemetryData.isConnectedToMQTT}
-              error={telemetryData.mqttError}
+              isConnected={activeTelemetry.isConnectedToMQTT}
+              error={activeTelemetry.mqttError}
             />
             <div className="flex justify-end mt-4 px-6 pb-6">
               <Button variant="outline" onClick={() => setShowMQTTConfig(false)}>
